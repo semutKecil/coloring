@@ -81,10 +81,12 @@ class Coloring {
 
     fun addOnColorChange(act: () -> Unit, vararg colorNames: String = emptyArray()) {
         if (colorNames.isEmpty()) {
-            onChange.add(Ev("", act))
+            val ev = Ev("", act)
+            if(!onChange.contains(ev)) onChange.add(Ev("", act))
         } else {
             colorNames.forEach {
-                onChange.add(Ev(it, act))
+                val ev = Ev(it, act)
+                if(!onChange.contains(ev)) onChange.add(Ev(it, act))
             }
         }
     }
