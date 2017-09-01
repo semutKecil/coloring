@@ -106,11 +106,18 @@ class Coloring {
                 t.primaryText = Color.parseColor("#FFFFFF")
                 t.baseText = Color.parseColor("#212121")
                 t.accentText = Color.parseColor("#FFFFFF")
-
                 Holder.instance = t
             }
 
             return Holder.instance!!
+        }
+
+        fun setAlpha(color: Int, factor: Float): Int {
+            val alpha = Math.round(255F * factor)
+            val red = Color.red(color)
+            val green = Color.green(color)
+            val blue = Color.blue(color)
+            return Color.argb(alpha, red, green, blue)
         }
     }
 
