@@ -8,87 +8,64 @@ import android.graphics.Color
  */
 
 class Coloring {
-    var primary = Color.parseColor("#03A9F4")
-        set(value) {
-            set("primary", value)
-            field = value
-        }
-        get() = get("primary")
-
-    var base = Color.parseColor("#FFFFFF")
-        set(value) {
-            set("base", value)
-            field = value
-        }
-        get() = get("base")
-
-    var accent = Color.parseColor("#4CAF50")
-        set(value) {
-            set("accent", value)
-            field = value
-        }
-        get() = get("accent")
-
-    var primaryText = Color.parseColor("#FFFFFF")
-        set(value) {
-            set("primaryText", value)
-            field = value
-        }
-        get() = get("primaryText")
-
-    var baseText = Color.parseColor("#212121")
-        set(value) {
-            set("baseText", value)
-            field = value
-        }
-        get() = get("baseText")
-
-    var accentText = Color.parseColor("#FFFFFF")
-        set(value) {
-            set("accentText", value)
-            field = value
-        }
-        get() = get("accentText")
-
     fun set(name: String, color: Int) {
+        setFunc(name, color, {
+            if (unappliedColor.any { c -> c.name == it.name }) {
+                unappliedColor.first { c -> c.name == it.name }.color = color
+            } else {
+                unappliedColor.add(it)
+            }
+        })
+    }
+
+    fun setAndApply(name: String, color: Int) {
+        setFunc(name, color, { applySpecific(it, false, name, "") })
+    }
+
+    private fun setFunc(name: String, color: Int, cb: (c: C) -> Unit) {
+        var c = C(name, color)
         if (!colors.any { it.name == name }) {
-            colors.add(C(name, color))
+            colors.add(c)
+            setFunc(name, color, { applySpecific(it, true, name, "") })
+            cb(c)
         } else {
-            colors.first { it.name == name }.color = color
+            c = colors.first { it.name == name }
+            if (c.color != color) {
+                c.color = color
+                setFunc(name, color, { applySpecific(it, true, name, "") })
+                cb(c)
+            }
         }
-        refresh(name, "")
-
     }
 
-    fun get(name: String): Int {
+
+    private fun applySpecific(c: C, auto: Boolean, vararg colorNames: String) {
+        colorNames.forEach {
+            onChange.filter { it.auto == auto }.filter { it.listen.any { s -> colorNames.any { s2 -> s2 == s } } }.forEach { it.act(mutableListOf(c)) }
+        }
+    }
+
+    fun get(name: String): C {
         return try {
-            colors.first { it.name == name }.color
+            colors.first { it.name == name }
         } catch (e: Exception) {
-            Color.parseColor("#FFFFFF")
+            colors[0]
         }
     }
 
-    fun refresh(vararg colorNames: String = emptyArray()) {
-        if (colorNames.isEmpty()) {
-            onChange.forEach { it.act() }
-        } else {
-            colorNames.forEach {
-                onChange.filter { ev -> it == ev.colorName }.forEach { ev -> ev.act() }
-            }
+    fun apply() {
+        onChange.filter { unappliedColor.map { u -> u.name }.any { s -> it.listen.any { s2 -> s2 == s } } || it.listen.any { s -> s == "" } }.forEach {
+            it.act(unappliedColor)
         }
-
+        unappliedColor.clear()
     }
 
-    fun addOnColorChange(act: () -> Unit, vararg colorNames: String = emptyArray()) {
-        if (colorNames.isEmpty()) {
-            val ev = Ev("", act)
-            if(!onChange.contains(ev)) onChange.add(Ev("", act))
-        } else {
-            colorNames.forEach {
-                val ev = Ev(it, act)
-                if(!onChange.contains(ev)) onChange.add(Ev(it, act))
-            }
-        }
+    fun addOnColorChange(onApply: OnApply) {
+        if (!onChange.contains(onApply)) onChange.add(onApply)
+    }
+
+    fun removeOnColorChange(onApply: OnApply) {
+        onChange.remove(onApply)
     }
 
     private object Holder {
@@ -100,31 +77,24 @@ class Coloring {
         fun instance(): Coloring {
             if (Holder.instance == null) {
                 val t = Coloring()
-                t.primary = Color.parseColor("#03A9F4")
-                t.base = Color.parseColor("#FFFFFF")
-                t.accent = Color.parseColor("#4CAF50")
-                t.primaryText = Color.parseColor("#FFFFFF")
-                t.baseText = Color.parseColor("#212121")
-                t.accentText = Color.parseColor("#FFFFFF")
+                t.set("primary", Color.parseColor("#03A9F4"))
+                t.set("base", Color.parseColor("#FFFFFF"))
+                t.set("accent", Color.parseColor("#4CAF50"))
+                t.set("primaryText", Color.parseColor("#FFFFFF"))
+                t.set("baseText", Color.parseColor("#212121"))
+                t.set("accentText", Color.parseColor("#FFFFFF"))
                 Holder.instance = t
             }
 
             return Holder.instance!!
         }
 
-        fun setAlpha(color: Int, factor: Float): Int {
-            val alpha = Math.round(255F * factor)
-            val red = Color.red(color)
-            val green = Color.green(color)
-            val blue = Color.blue(color)
-            return Color.argb(alpha, red, green, blue)
-        }
+
     }
 
-
+    private var unappliedColor = mutableListOf<C>()
     private var colors = mutableListOf<C>()
-    private var onChange = mutableListOf<Ev>()
+    private var onChange = mutableListOf<OnApply>()
 
-    private class Ev(var colorName: String, var act: () -> Unit)
-    private class C(var name: String, var color: Int)
+    class OnApply(var act: (c: MutableList<C>) -> Unit, var listen: List<String>, var auto: Boolean = false)
 }

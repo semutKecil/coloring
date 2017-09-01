@@ -14,20 +14,24 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val tv = findViewById(R.id.coloringTest) as TextView
-        Coloring.instance().addOnColorChange( {
-            tv.text = Coloring.instance().primary.toString()
-            tv.setTextColor(Coloring.instance().primary)
-        },"primary")
+        val coloring = Coloring.instance()
+        coloring.addOnColorChange(Coloring.OnApply({
+            tv.text = coloring.get("primary").color.toString()
+            tv.setTextColor(coloring.get("primary").color)
+        },listOf("primary")))
 
         findViewById(R.id.pick).setOnClickListener {
             ColorPickerDialogBuilder
                     .with(this)
                     .setTitle("Choose color")
-                    .initialColor(Coloring.instance().primary)
+                    .initialColor(coloring.get("primary").color)
                     .wheelType(ColorPickerView.WHEEL_TYPE.FLOWER)
                     .density(12)
                     //.setOnColorSelectedListener { selectedColor -> toast("onColorSelected: 0x" + Integer.toHexString(selectedColor)) }
-                    .setPositiveButton("ok") { dialog, selectedColor, allColors -> Coloring.instance().primary = selectedColor }
+                    .setPositiveButton("ok") { dialog, selectedColor, allColors ->
+                        coloring.set("primary",selectedColor)
+                        coloring.apply()
+                    }
                     .setNegativeButton("cancel") { dialog, which -> }
                     .build()
                     .show()
